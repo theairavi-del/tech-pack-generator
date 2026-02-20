@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tech Pack Generator | AI-Powered Product Specs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --bg-dark: #0f0f12;
+            --bg-card: #1a1a20;
+            --border: #2a2a35;
+            --text: #e4e4e7;
+            --text-muted: #a1a1aa;
+        }
+        body {
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .drop-zone {
+            border: 2px dashed var(--border);
+            background: linear-gradient(145deg, rgba(99, 102, 241, 0.05), rgba(99, 102, 241, 0.02));
+            transition: all 0.3s ease;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
+            transform: scale(1.01);
+        }
+        .spec-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+        .spec-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+        }
+        .input-field {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-size: 14px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .input-field::placeholder {
+            color: var(--text-muted);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+        }
+        .color-swatch {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .color-swatch:hover {
+            transform: scale(1.1);
+            border-color: var(--primary);
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(99, 102, 241, 0.2);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .preview-image {
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .measurement-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 40px;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .tech-pack-preview {
+            background: white;
+            color: #1a1a1a;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-xl sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">T</div>
+                <div>
+                    <h1 class="font-semibold text-lg">Tech Pack Generator</h1>
+                    <p class="text-xs text-zinc-400">AI-Powered Product Specs</p>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="loadExample()" class="btn-secondary">Load Example</button>
+                <button onclick="exportPDF()" id="exportBtn" class="btn-primary hidden">Export PDF</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Upload Section -->
+        <section id="uploadSection" class="mb-10">
+            <div id="dropZone" class="drop-zone rounded-2xl p-12 text-center cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">Drop your product image here</h3>
+                <p class="text-zinc-400 mb-4">or click to browse</p>
+                <p class="text-sm text-zinc-500">Supports: JPG, PNG, WEBF (max 10MB)</p>
+                <input type="file" id="fileInput" class="hidden" accept="image/*" onchange="handleFile(event)">
+            </div>
+        </section>
+
+        <!-- Loading State -->
+        <section id="loadingSection" class="hidden text-center py-20">
+            <div class="loading-spinner mx-auto mb-6"></div>
+            <h3 class="text-xl font-semibold mb-2">Analyzing your product...</h3>
+            <p class="text-zinc-400">Extracting details and generating tech pack</p>
+        </section>
+
+        <!-- Tech Pack Form -->
+        <section id="techPackSection" class="hidden">
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Left Column: Image & Basic Info -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="spec-card">
+                        <h3 class="font-semibold mb-4 text-indigo-400">Product Image</h3>
+                        <img id="productImage" class="preview-image w-full mb-4" src="" alt="Product">
+                        <button onclick="changeImage()" class="btn-secondary w-full text-sm">Change Image</button>
+                    </div>
+
+                    <div class="spec-card">
+                        <h3 class="font-semibold mb-4 text-indigo-400">Basic Information</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Product Name</label>
+                                <input type="text" id="productName" class="input-field" placeholder="e.g., Classic Cotton Tee">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Style Number</label>
+                                <input type="text" id="styleNumber" class="input-field" placeholder="e.g., SS24-001">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Category</label>
+                                <select id="category" class="input-field">
+                                    <option value="">Select category...</option>
+                                    <option value="apparel">Apparel</option>
+                                    <option value="footwear">Footwear</option>
+                                    <option value="accessories">Accessories</option>
+                                    <option value="bags">Bags</option>
+                                    <option value="jewelry">Jewelry</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Season</label>
+                                <select id="season" class="input-field">
+                                    <option value="">Select season...</option>
+                                    <option value="SS24">Spring/Summer 2024</option>
+                                    <option value="FW24">Fall/Winter 2024</option>
+                                    <option value="SS25">Spring/Summer 2025</option>
+                                    <option value="FW25">Fall/Winter 2025</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="spec-card">
+                        <h3 class="font-semibold mb-4 text-indigo-400">Colorway</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Primary Color</label>
+                                <div class="flex gap-3">
+                                    <input type="color" id="primaryColor" class="color-swatch" value="#2d2d2d" onchange="updateColorName('primary')">
+                                    <input type="text" id="primaryColorName" class="input-field flex-1" placeholder="Color name">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Secondary Color</label>
+                                <div class="flex gap-3">
+                                    <input type="color" id="secondaryColor" class="color-swatch" value="#6366f1" onchange="updateColorName('secondary')">
+                                    <input type="text" id="secondaryColorName" class="input-field flex-1" placeholder="Color name (optional)">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle Column: Materials & Construction -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="spec-card">
+                        <h3 class="font-semibold mb-4 text-indigo-400">Materials</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Main Fabric</label>
+                                <input type="text" id="mainFabric" class="input-field" placeholder="e.g., 100% Organic Cotton">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Fabric Weight</label>
+                                <input type="text" id="fabricWeight" class="input-field" placeholder="e.g., 180 GSM">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Lining</label>
+                                <input type="text" id="lining" class="input-field" placeholder="e.g., Polyester mesh (optional)">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Trim/Details</label>
+                                <textarea id="trim" class="input-field h-24 resize-none" placeholder="e.g., Metal zipper, leather patch, embroidered logo..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="spec-card">
+                        <h3 class="font-semibold mb-4 text-indigo-400">Construction Details</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Seam Type</label>
+                                <input type="text" id="seamType" class="input-field" placeholder="e.g., Flatlock, Overlock">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Stitch Density</label>
+                                <input type="text" id="stitchDensity" class="input-field" placeholder="e.g., 12 SPI (stitches per inch)">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Hardware</label>
+                                <input type="text" id="hardware" class="input-field" placeholder="e.g., YKK zippers, metal eyelets">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Labels & Tags</label>
+                                <textarea id="labels" class="input-field h-20 resize-none" placeholder="e.g., Woven neck label, hang tag, care label..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Measurements & Notes -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="spec-card">
+                        <h3 class="font-semibold mb-4 text-indigo-400">Size Measurements</h3>
+                        <div class="mb-4">
+                            <label class="block text-sm text-zinc-400 mb-2">Size Range</label>
+                            <input type="text" id="sizeRange" class="input-field" placeholder="e.g., XS-XXL">
+                        </div>
+                        <div id="measurementsList" class="space-y-2">
+                            <div class="measurement-row">
+                                <input type="text" class="input-field" placeholder="Measurement">
+                                <input type="text" class="input-field" placeholder="XS">
+                                <input type="text" class="input-field" placeholder="S">
+                                <button onclick="removeMeasurement(this)" class="text-zinc-500 hover:text-red-400">×</button>
+                            </div>
+                        </div>
+                        <button onclick="addMeasurement()" class="btn-secondary w-full mt-4 text-sm">+ Add Measurement</button>
+                    </div>
+
+                    <div class="spec-card">
+                        <h3 class="font-semibold mb-4 text-indigo-400">Production Notes</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">MOQ (Minimum Order Quantity)</label>
+                                <input type="text" id="moq" class="input-field" placeholder="e.g., 100 units per color">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Lead Time</label>
+                                <input type="text" id="leadTime" class="input-field" placeholder="e.g., 4-6 weeks">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Sample Status</label>
+                                <select id="sampleStatus" class="input-field">
+                                    <option value="">Select status...</option>
+                                    <option value="proto">Prototype</option>
+                                    <option value="fit">Fit Sample</option>
+                                    <option value="pp">Pre-Production</option>
+                                    <option value="bulk">Bulk Production</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-zinc-400 mb-2">Special Instructions</label>
+                                <textarea id="specialNotes" class="input-field h-32 resize-none" placeholder="Any additional notes, quality requirements, or special instructions..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-center gap-4 mt-10">
+                <button onclick="resetForm()" class="btn-secondary">Reset</button>
+                <button onclick="saveTechPack()" class="btn-primary">Save Tech Pack</button>
+                <button onclick="exportPDF()" class="btn-primary">Export PDF</button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Drag and drop handling
+        const dropZone = document.getElementById('dropZone');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length) handleFiles(files[0]);
+        }
+
+        function handleFile(e) {
+            if (e.target.files.length) handleFiles(e.target.files[0]);
+        }
+
+        function handleFiles(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please upload an image file');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('loadingSection').classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('productImage').src = e.target.result;
+                
+                // Simulate AI analysis delay
+                setTimeout(() => {
+                    document.getElementById('loadingSection').classList.add('hidden');
+                    document.getElementById('techPackSection').classList.remove('hidden');
+                    document.getElementById('exportBtn').classList.remove('hidden');
+                    
+                    // Auto-fill based on image analysis (mock)
+                    autoFillFields();
+                }, 2000);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function autoFillFields() {
+            // Mock AI-generated content based on image
+            const category = document.getElementById('category').value || 'apparel';
+            
+            const suggestions = {
+                apparel: {
+                    name: 'Crew Neck T-Shirt',
+                    fabric: '100% Cotton Jersey',
+                    weight: '180 GSM',
+                    seam: 'Double needle',
+                    stitch: '12 SPI'
+                },
+                footwear: {
+                    name: 'Low Top Sneaker',
+                    fabric: 'Canvas upper',
+                    weight: 'N/A',
+                    seam: 'Strobel',
+                    stitch: '8 SPI'
+                },
+                accessories: {
+                    name: 'Canvas Tote Bag',
+                    fabric: '12oz Canvas',
+                    weight: '400 GSM',
+                    seam: 'Flat felled',
+                    stitch: '10 SPI'
+                }
+            };
+
+            const s = suggestions[category] || suggestions.apparel;
+            
+            if (!document.getElementById('productName').value) {
+                document.getElementById('productName').value = s.name;
+            }
+            if (!document.getElementById('mainFabric').value) {
+                document.getElementById('mainFabric').value = s.fabric;
+            }
+            if (!document.getElementById('fabricWeight').value) {
+                document.getElementById('fabricWeight').value = s.weight;
+            }
+            if (!document.getElementById('seamType').value) {
+                document.getElementById('seamType').value = s.seam;
+            }
+            if (!document.getElementById('stitchDensity').value) {
+                document.getElementById('stitchDensity').value = s.stitch;
+            }
+        }
+
+        function addMeasurement() {
+            const list = document.getElementById('measurementsList');
+            const row = document.createElement('div');
+            row.className = 'measurement-row';
+            row.innerHTML = `
+                <input type="text" class="input-field" placeholder="Measurement">
+                <input type="text" class="input-field" placeholder="XS">
+                <input type="text" class="input-field" placeholder="S">
+                <button onclick="removeMeasurement(this)" class="text-zinc-500 hover:text-red-400">×</button>
+            `;
+            list.appendChild(row);
+        }
+
+        function removeMeasurement(btn) {
+            btn.parentElement.remove();
+        }
+
+        function updateColorName(type) {
+            const color = document.getElementById(type + 'Color').value;
+            const nameInput = document.getElementById(type + 'ColorName');
+            if (!nameInput.value) {
+                // Simple color name mapping
+                const names = {
+                    '#000000': 'Black', '#ffffff': 'White', '#ff0000': 'Red',
+                    '#00ff00': 'Green', '#0000ff': 'Blue', '#ffff00': 'Yellow'
+                };
+                nameInput.value = names[color] || 'Custom';
+            }
+        }
+
+        function changeImage() {
+            document.getElementById('fileInput').click();
+        }
+
+        function resetForm() {
+            if (confirm('Reset all fields?')) {
+                document.querySelectorAll('.input-field').forEach(input => {
+                    if (input.type !== 'color') input.value = '';
+                });
+            }
+        }
+
+        function saveTechPack() {
+            const data = collectFormData();
+            localStorage.setItem('techPack_' + Date.now(), JSON.stringify(data));
+            alert('Tech pack saved!');
+        }
+
+        function collectFormData() {
+            return {
+                productName: document.getElementById('productName').value,
+                styleNumber: document.getElementById('styleNumber').value,
+                category: document.getElementById('category').value,
+                season: document.getElementById('season').value,
+                colors: {
+                    primary: document.getElementById('primaryColor').value,
+                    primaryName: document.getElementById('primaryColorName').value,
+                    secondary: document.getElementById('secondaryColor').value,
+                    secondaryName: document.getElementById('secondaryColorName').value
+                },
+                materials: {
+                    main: document.getElementById('mainFabric').value,
+                    weight: document.getElementById('fabricWeight').value,
+                    lining: document.getElementById('lining').value,
+                    trim: document.getElementById('trim').value
+                },
+                construction: {
+                    seam: document.getElementById('seamType').value,
+                    stitch: document.getElementById('stitchDensity').value,
+                    hardware: document.getElementById('hardware').value,
+                    labels: document.getElementById('labels').value
+                },
+                production: {
+                    sizeRange: document.getElementById('sizeRange').value,
+                    moq: document.getElementById('moq').value,
+                    leadTime: document.getElementById('leadTime').value,
+                    sampleStatus: document.getElementById('sampleStatus').value,
+                    notes: document.getElementById('specialNotes').value
+                }
+            };
+        }
+
+        function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const data = collectFormData();
+            
+            // Header
+            doc.setFontSize(24);
+            doc.text('TECH PACK', 20, 30);
+            
+            doc.setFontSize(12);
+            doc.text(`Product: ${data.productName || 'Untitled'}`, 20, 50);
+            doc.text(`Style #: ${data.styleNumber || 'N/A'}`, 20, 60);
+            doc.text(`Season: ${data.season || 'N/A'}`, 20, 70);
+            
+            // Materials
+            doc.setFontSize(16);
+            doc.text('MATERIALS', 20, 90);
+            doc.setFontSize(12);
+            doc.text(`Main: ${data.materials.main || 'N/A'}`, 20, 105);
+            doc.text(`Weight: ${data.materials.weight || 'N/A'}`, 20, 115);
+            
+            // Construction
+            doc.setFontSize(16);
+            doc.text('CONSTRUCTION', 20, 135);
+            doc.setFontSize(12);
+            doc.text(`Seam: ${data.construction.seam || 'N/A'}`, 20, 150);
+            doc.text(`Stitch: ${data.construction.stitch || 'N/A'}`, 20, 160);
+            
+            // Production
+            doc.setFontSize(16);
+            doc.text('PRODUCTION', 20, 180);
+            doc.setFontSize(12);
+            doc.text(`MOQ: ${data.production.moq || 'N/A'}`, 20, 195);
+            doc.text(`Lead Time: ${data.production.leadTime || 'N/A'}`, 20, 205);
+            
+            // Add image if exists
+            const img = document.getElementById('productImage');
+            if (img.src && !img.src.includes('undefined')) {
+                try {
+                    doc.addImage(img.src, 'JPEG', 120, 40, 70, 70);
+                } catch(e) {
+                    console.log('Could not add image to PDF');
+                }
+            }
+            
+            doc.save(`TechPack_${data.styleNumber || 'Product'}.pdf`);
+        }
+
+        function loadExample() {
+            // Load example data
+            document.getElementById('productName').value = 'Classic Cotton T-Shirt';
+            document.getElementById('styleNumber').value = 'SS24-001';
+            document.getElementById('category').value = 'apparel';
+            document.getElementById('season').value = 'SS24';
+            document.getElementById('primaryColor').value = '#2d2d2d';
+            document.getElementById('primaryColorName').value = 'Charcoal';
+            document.getElementById('mainFabric').value = '100% Organic Cotton';
+            document.getElementById('fabricWeight').value = '180 GSM';
+            document.getElementById('seamType').value = 'Double needle coverstitch';
+            document.getElementById('stitchDensity').value = '12 SPI';
+            document.getElementById('sizeRange').value = 'XS-XXL';
+            document.getElementById('moq').value = '100 units per color';
+            document.getElementById('leadTime').value = '4-6 weeks';
+            
+            // Show form
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('techPackSection').classList.remove('hidden');
+            document.getElementById('exportBtn').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
